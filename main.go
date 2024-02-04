@@ -102,32 +102,37 @@ func (rc *ReactCollection) SetActiveMode(v bool) {
   rc.isActive = v
 }
 
+func isBackspace(char rune) bool {
+  return rune(8) == char
+}
+
 func (rc *ReactCollection) ReactOnKey(ev hook.Event) error {
   kchar := ev.Keychar
-  rmap := rc.getCurrSection()
+  if isBackspace(kchar) {
+    return nil
+  }
+
   if !rc.isActive {
     if kchar == rc.activatingChar {
       rc.SetActiveMode(true)
       rc.IntroduceChatOptions(0)
     }
     return nil
-  } else if kchar == rc.activatingChar {
-    rc.SetActiveMode(false)
-    removePreviousCharacters(rmap.FrameSize)
-    return nil
-  }
+  } 
+
+
+  rmap := rc.getCurrSection()
+  removePreviousCharacters(rmap.FrameSize)
 
   react, err := rmap.GetReaction(kchar)
-  if err != nil {
-    return err
+  if err == nil {
+    react.Response()
   }
 
-  removePreviousCharacters(rmap.FrameSize)
-  react.Response()
   _, needsFollowingActions := react.(MoveOption)
   rc.SetActiveMode(needsFollowingActions)
 
-  return nil
+  return err
 }
 
 func (rc *ReactCollection) IntroduceChatOptions(n int) {

@@ -21,7 +21,7 @@ func main() {
   }
 
   
-  chw := produceReactCollectionFrom(ps)
+  chw := parseWheel(ps)
   setupKeyboardListener(chw)
 }
 
@@ -34,7 +34,8 @@ func readClipboard() string {
   return res
 }
 
-type PhraseSet [][2]string
+
+type PhraseSet [][2]any // string | PhraseSet
 
 type ReactOptionI interface {
   GetTag() string
@@ -49,30 +50,6 @@ func (keyerr ErrNoReactionForKey) Error() string {
   return fmt.Sprint("Ignoring key ", keyerr.Key)
 }
 
-type ReactMap struct {
-  Reactions []ReactOptionI
-  FrameSize int
-}
-
-func makeReactMap(sectionCap int) *ReactMap {
-  rmap := ReactMap{
-    make([]ReactOptionI, 0, sectionCap),
-    0,
-  }
-  return &rmap
-}
-
-func (rmap *ReactMap) addReactOption(reopt ReactOptionI) {
-  rmap.Reactions = append(rmap.Reactions, reopt)
-}
-
-func (rmap *ReactMap) GetReaction(keyChar rune) (ReactOptionI, error) {
-  ind := deductIndFrom(keyChar)
-  if ind < 0 || ind >= len(rmap.Reactions) {
-    return nil, ErrNoReactionForKey{keyChar}
-  }
-  return rmap.Reactions[ind], nil
-}
 
 func deductIndFrom(keyChar rune) int {
   return int(keyChar - '0') - 1
@@ -82,165 +59,186 @@ func makeKey(n int) rune {
   return rune('0'+n + 1)
 }
 
-type ReactCollection struct {
-  CurrentSection int
-  Sections []*ReactMap
-  SectionCap int
-  activatingChar rune
-  isActive bool
+
+
+type WheelItemI interface {
+  Response() *WheelFrame
+  GetTag() string
 }
 
-func (rc *ReactCollection) getCurrSection() ReactMap {
-  return *rc.Sections[rc.CurrentSection]
+
+type WheelFrame struct {
+  Key rune
+  Prompt string
+  Items []WheelItemI
+  FrameSize int
 }
 
-func (rc *ReactCollection) setCurrSection(n int) {
-  rc.CurrentSection = n % rc.SectionCap
+func (wf *WheelFrame) Response() *WheelFrame {
+  for _, wi := range wf.Items {
+    robotgo.TypeStr(wi.GetTag())
+  }
+  return wf
 }
 
-func (rc *ReactCollection) SetActiveMode(v bool) {
-  rc.isActive = v
+func (wf *WheelFrame) GetTag() string {
+  return makeTag(wf.Key, wf.Prompt)
 }
 
-func isBackspace(char rune) bool {
-  return rune(8) == char
+func (wf *WheelFrame) addItem(whi WheelItemI) {
+  wf.Items = append(wf.Items, whi)
+  wf.FrameSize += len(whi.GetTag())
 }
 
-func (rc *ReactCollection) ReactOnKey(ev hook.Event) error {
+type WheelChatOption struct {
+  Key rune
+  Prompt string
+  Text string
+}
+
+func (wco WheelChatOption) GetTag() string {
+  return makeTag(wco.Key, wco.Prompt)
+}
+
+func (wco WheelChatOption) Response() *WheelFrame {
+  robotgo.TypeStr(wco.Text)
+  return nil
+}
+
+
+const MAX_INTRO_LEN = 10
+func makeWheelChatOption(key rune, prompt string, phrase string) WheelChatOption {
+  if len(prompt) > MAX_INTRO_LEN {
+    prompt = prompt[:MAX_INTRO_LEN-2] + ".."
+  }
+  return WheelChatOption{key, prompt, phrase}
+}
+
+type WheelController struct {
+  Start *WheelFrame
+  Current *WheelFrame
+}
+
+func (wc *WheelController) getCurrOpts() []WheelItemI {
+  return wc.Current.Items
+}
+
+func (wc *WheelController) ReactOnKey(ev hook.Event) error {
   kchar := ev.Keychar
   if isBackspace(kchar) {
     return nil
   }
 
-  if !rc.isActive {
-    if kchar == rc.activatingChar {
-      rc.SetActiveMode(true)
-      rc.IntroduceChatOptions(0)
+  if wc.Current == nil {
+    if kchar == ACTIVATING_CHAR {
+      wc.Current = wc.Start.Response()
     }
     return nil
-  } 
-
-
-  rmap := rc.getCurrSection()
-  removePreviousCharacters(rmap.FrameSize)
-
-  react, err := rmap.GetReaction(kchar)
-  if err == nil {
-    react.Response()
   }
 
-  _, needsFollowingActions := react.(MoveOption)
-  rc.SetActiveMode(needsFollowingActions)
-
-  return err
-}
-
-func (rc *ReactCollection) IntroduceChatOptions(n int) {
-  rc.setCurrSection(n)
-  for _, reopt := range rc.getCurrSection().Reactions {
-    robotgo.TypeStr(reopt.GetTag())
+  i := deductIndFrom(kchar)
+  removePreviousCharacters(wc.Current.FrameSize)
+  opts := wc.getCurrOpts()
+  if isOutOfBounds(i, opts) {
+    wc.Current = nil
+    return ErrNoReactionForKey{kchar}
   }
+  whi := opts[i].Response()
+  wc.Current = whi
+  return nil
 }
 
-func (rc *ReactCollection) addSection(section *ReactMap) {
-  rc.Sections = append(rc.Sections, section)
+func makeTag(key rune, prompt string) string {
+  return fmt.Sprintf("[%v] %v ", string(key), prompt)
 }
 
-func produceReactCollectionFrom(ps PhraseSet) *ReactCollection {
-  rcoll := &ReactCollection{0, nil, 5, 'q', false}
-  sCap := rcoll.SectionCap
+func makeWheelFrame(key rune, prompt string) *WheelFrame {
+  wf := WheelFrame{key, prompt, nil, 0}
+  return &wf
+}
 
-  reactI := 0
-  currSect := makeReactMap(sCap)
-  sectI := 0
-  for n, pair := range ps {
-    var reopt ReactOptionI
-    if reactI >= sCap - 1 && n < len(ps) - 1 {
-      reopt = formNextSetButton(makeKey(reactI), sectI+1, rcoll)
-      currSect.addReactOption(reopt)
-      currSect.FrameSize += len(reopt.GetTag())
-      rcoll.addSection(currSect)
-      
-      sectI++
-      currSect = makeReactMap(sCap)
-      reactI = 0
+func (wc *WheelController) addItem(nextI int, it WheelItemI) {
+  if nextI >= 5 - 1 {
+    var oldKey rune
+    it, oldKey = reassignAndSwapKeys(it, makeKey(0))
+    slider := makeWheelFrame(oldKey, ">>")
+    wc.Current.addItem(slider)
+    wc.Current = slider
+  }
+  wc.Current.addItem(it)
+}
+
+func reassignAndSwapKeys(it WheelItemI, toKey rune) (WheelItemI, rune) {
+  var oldKey rune
+  var wi WheelItemI
+  switch it.(type) {
+  case *WheelFrame:
+    oldF := it.(*WheelFrame)
+    oldKey = oldF.Key
+    oldPrompt := oldF.Prompt
+    wi = makeWheelFrame(toKey, oldPrompt)
+  case WheelChatOption:
+    oldF := it.(WheelChatOption)
+    oldKey = oldF.Key
+    oldPrompt := oldF.Prompt
+    oldContent := oldF.Text
+    wi = makeWheelChatOption(toKey, oldPrompt, oldContent)
+  default:
+    log.Fatal("Encountered wrong type while trying to parse data")
+  }
+  return wi, oldKey
+}
+
+func isOutOfBounds[T any](i int, arr []T) bool {
+  return i < 0 || i >= len(arr)
+}
+
+func parseWheelFrameInto(wc *WheelController, ps PhraseSet) {
+  if len(ps) == 0 {
+    log.Fatal("Encountered empty phrase set")
+  }
+
+  for _, p := range ps {
+    prompt := p[0].(string)
+    nextI := len(wc.Current.Items)
+    key := makeKey(nextI)
+
+    phrase, isString := p[1].(string)
+    if isString {
+      wco := makeWheelChatOption(key, prompt, phrase)
+      wc.addItem(nextI, wco)
+      continue 
+    } 
+
+    pset, isPset := p[1].(PhraseSet)
+    if !isPset {
+      log.Fatal("Couldn't parse the file")
     }
 
-    tag, phrase := pair[0], pair[1]
-    key := makeKey(reactI)
-    opt := formIntroOptionText(tag, key)
-
-    currSect.FrameSize += len(opt)
-    reopt = formReactOption(opt, phrase)
-    currSect.addReactOption(reopt)
-    reactI++
-  }
-
-  sectsN := 1 + len(ps) / (sCap - 1)
-  if sectI < sectsN {
-    rcoll.addSection(currSect)
-  }
-
-  return rcoll
-}
-
-
-type MoveOption struct {
-  Tag string
-  GoToNextSection func()
-}
-
-func (mo MoveOption) GetTag() string {
-  return mo.Tag
-}
-
-func (mo MoveOption) Response() {
-  mo.GoToNextSection()
-}
-
-func formNextSetButton(key rune, n int, rcoll *ReactCollection) MoveOption {
-  tag := formIntroOptionText(">>", key)
-  return MoveOption{ 
-    tag, func() { rcoll.IntroduceChatOptions(n)},
+    wf := makeWheelFrame(key, prompt)
+    wc.addItem(nextI, wf)
+    parseWheelFrameInto(wc, pset)
   }
 }
 
-type ReactOption struct {
-  Tag string
-  Content string
-}
-
-func (reopt ReactOption) GetTag() string {
-  return reopt.Tag
-}
-
-func (reopt ReactOption) Response() {
-  robotgo.TypeStr(reopt.Content)
-}
-
-func formReactOption(optTag string, v string) ReactOptionI {
-  reopt := ReactOption{optTag, v}
-  return reopt
+func parseWheel(ps PhraseSet) ChatWheelI {
+  wc := new(WheelController)
+  wc.Current = makeWheelFrame('0', "")
+  wc.Start = wc.Current
+  parseWheelFrameInto(wc, ps)
+  wc.Current = nil
+  return wc
 }
 
 func removePreviousCharacters(n int) {
-  robotgo.KeyUp(robotgo.Ctrl)
   robotgo.KeyDown(robotgo.Shift)
-  for i := 0; i < n + 2; i++ {
-    // deleting both activating characters and frame; hence n + 2
+  for i := 0; i < n+1; i++ {
     robotgo.KeyPress(robotgo.Left)
   }
   robotgo.KeyUp(robotgo.Shift)
   robotgo.KeyPress(robotgo.Backspace)
 }
 
-const MAX_INTRO_LEN = 12
-func formIntroOptionText(name string, key rune) string {
-  if len(name) > MAX_INTRO_LEN {
-    name = name[:MAX_INTRO_LEN-3] + "..."
-  }
-  return fmt.Sprintf("[%v] %v ", string(key), name)
-}
 
 func loadPhraseSet(path string) (PhraseSet, error) {
   f, err := os.ReadFile(path)
@@ -254,21 +252,30 @@ func loadPhraseSet(path string) (PhraseSet, error) {
 }
 
 type ChatWheelI interface {
-  ReactOnKey(e hook.Event) error
+  ReactOnKey(hook.Event) (error)
 }
-
-
 
 
 func setupKeyboardListener(chw ChatWheelI) {
   fmt.Println("--- Press q to enter into active mode ---")
 
+  modeActive := false
   hook.Register(hook.KeyDown, []string{}, func(e hook.Event) {
     chw.ReactOnKey(e)
+  })
+  hook.Register(hook.KeyDown, []string{"q"}, func(e hook.Event) {
+    if !modeActive {
+      modeActive = true
+    }
   })
 
 	s := hook.Start()
 	<-hook.Process(s)
 }
 
+func isBackspace(char rune) bool {
+  return rune(8) == char
+}
+
+const ACTIVATING_CHAR = 'q'
 

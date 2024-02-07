@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -193,6 +194,8 @@ func isOutOfBounds[T any](i int, arr []T) bool {
   return i < 0 || i >= len(arr)
 }
 
+var ErrParsePhraseSet = errors.New("Couldn't parse the file")
+
 func parseWheelFrameInto(wc *WheelController, ps PhraseSet) {
   if len(ps) == 0 {
     log.Fatal("Encountered empty phrase set")
@@ -210,15 +213,38 @@ func parseWheelFrameInto(wc *WheelController, ps PhraseSet) {
       continue 
     } 
 
-    pset, isPset := p[1].(PhraseSet)
-    if !isPset {
-      log.Fatal("Couldn't parse the file")
+    anyArr, isArr := p[1].([]any)
+    if !isArr {
+      log.Fatal(ErrParsePhraseSet)
     }
+
+    pset := parseAnyArrIntoPhraseSet(anyArr)
 
     wf := makeWheelFrame(key, prompt)
     wc.addItem(nextI, wf)
+    oldCur := wc.Current
+
+    wc.Current = wf
     parseWheelFrameInto(wc, pset)
+    wc.Current = oldCur
   }
+}
+
+func parseAnyArrIntoPhraseSet(anyArr []any) PhraseSet {
+  pset := make(PhraseSet, 0)
+  for _, v := range anyArr {
+    slice, ok := v.([]any)
+    if !ok {
+      log.Fatal(ErrParsePhraseSet)
+    }
+    pair := [2]any{}
+    for i := range pair {
+      pair[i] = slice[i]
+    }
+
+    pset = append(pset, pair)
+  }
+  return pset
 }
 
 func parseWheel(ps PhraseSet) ChatWheelI {

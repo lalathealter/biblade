@@ -1,11 +1,28 @@
 [
-  ["Ephs 4:32", "Be kind and loving to each other. Forgive each other the same as God forgave you through Christ"],
-  ["Matt 12:36-37", "I tell you, on the day of judgment people will give account for every careless word they speak, 37 for by your words you will be justified, and by your words you will be condemned"],
-  ["Gal 5:15", "But if you bite and devour one another, watch out that you are not consumed by one another"],
-  ["Exo 14:14", "The Lord will fight for you, and you have only to be silent"],
-  ["2Tim 1:7", "For God did not give us a spirit of cowardice but rather a spirit of power and of love and of self-discipline"],
-  ["Ps 27:1", "The Lord is my light and my salvation; whom shall I fear? The Lord is the stronghold of my life; of whom shall I be afraid?"],
-  ["2Tim 2:24", "And the Lord’s servant must not be quarrelsome but kind to everyone, able to teach, patiently enduring evil"],
-  ["James 4:7", "Submit yourselves therefore to God. Resist the devil, and he will flee from you"],
-  ["Rom 12:17-19", "Don’t pay people back with evil for the evil they do to you. Focus your thoughts on those things that are considered noble. As much as it is possible, live in peace with everyone. Don’t take revenge, dear friends. Instead, let God’s anger take care of it. After all, Scripture says, “I alone have the right to take revenge. I will pay back, says the Lord"]
+  ["Bible Quotes", 
+    [
+      ["Ephs 4:32", "Be kind and loving to each other. Forgive each other the same as God forgave you through Christ"],
+      ["Matt 12:36-37", "I tell you, on the day of judgment people will give account for every careless word they speak, 37 for by your words you will be justified, and by your words you will be condemned"],
+      ["Gal 5:15", "But if you bite and devour one another, watch out that you are not consumed by one another"],
+      ["Exo 14:14", "The Lord will fight for you, and you have only to be silent"],
+      ["2Tim 1:7", "For God did not give us a spirit of cowardice but rather a spirit of power and of love and of self-discipline"],
+      ["Ps 27:1", "The Lord is my light and my salvation; whom shall I fear? The Lord is the stronghold of my life; of whom shall I be afraid?"],
+      ["2Tim 2:24", "And the Lord’s servant must not be quarrelsome but kind to everyone, able to teach, patiently enduring evil"],
+      ["James 4:7", "Submit yourselves therefore to God. Resist the devil, and he will flee from you"],
+      ["Rom 12:17-19", "Don’t pay people back with evil for the evil they do to you. Focus your thoughts on those things that are considered noble. As much as it is possible, live in peace with everyone. Don’t take revenge, dear friends. Instead, let God’s anger take care of it. After all, Scripture says, “I alone have the right to take revenge. I will pay back, says the Lord"]
+    ]
+  ],
+  ["Slang", [
+    ["#lols", [
+      ["LOL", "laughing out loud"],
+      ["ROFL", "rolling on the ground of laughter"],
+      ["KEK", "(LOL in russian)"],
+      ["LUL", "(same as KEK)"]
+    ]],
+    ["OMG", "Oh my God"],
+    ["BC", "Because"],
+    ["AMA", "Ask Me Anything"],
+    ["ASAP", " As Soon As Possible"],
+    ["CUL", " See You Later"]
+  ]]
 ]

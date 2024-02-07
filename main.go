@@ -132,6 +132,7 @@ func (wc *WheelController) ReactOnKey(ev hook.Event) error {
 
   if wc.Current == nil {
     if kchar == ACTIVATING_CHAR {
+      removePreviousCharacters(1)
       wc.Current = wc.Start.Response()
     }
     return nil
@@ -257,11 +258,9 @@ func parseWheel(ps PhraseSet) ChatWheelI {
 }
 
 func removePreviousCharacters(n int) {
-  robotgo.KeyDown(robotgo.Shift)
   for i := 0; i < n+1; i++ {
-    robotgo.KeyPress(robotgo.Left)
+    robotgo.KeyPress(robotgo.Left, robotgo.Shift)
   }
-  robotgo.KeyUp(robotgo.Shift)
   robotgo.KeyPress(robotgo.Backspace)
 }
 
@@ -285,14 +284,8 @@ type ChatWheelI interface {
 func setupKeyboardListener(chw ChatWheelI) {
   fmt.Println("--- Press q to enter into active mode ---")
 
-  modeActive := false
   hook.Register(hook.KeyDown, []string{}, func(e hook.Event) {
     chw.ReactOnKey(e)
-  })
-  hook.Register(hook.KeyDown, []string{"q"}, func(e hook.Event) {
-    if !modeActive {
-      modeActive = true
-    }
   })
 
 	s := hook.Start()

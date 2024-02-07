@@ -7,11 +7,10 @@ import (
 	hook "github.com/robotn/gohook"
 )
 
-const exampleJSON = "./example.json"
-
 func main() {
   
-  ps, err := loadPhraseSet(exampleJSON)
+  chosenFile := getCurrWheelFile()
+  ps, err := loadPhraseSet(chosenFile)
   if err != nil {
     log.Fatal(err)
   }
@@ -22,7 +21,13 @@ func main() {
 
 
 func setupAppListener(chw ChatWheelI) {
-  fmt.Println("--- Press q to enter into active mode ---")
+  msg := fmt.Sprintf(`--- [biblade] ---
+1) Press "%v" to enter into active mode
+2) To choose a phrase simply press a corresponding key that
+is specified in square brackets;
+3) To exit from active mode without confirmation please
+press any other key`, string(getActivatingChar()))
+  fmt.Println(msg)
 
   hook.Register(hook.KeyDown, []string{}, func(e hook.Event) {
     chw.ReactOnKey(e)

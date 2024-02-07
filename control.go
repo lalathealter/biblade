@@ -28,8 +28,6 @@ func (wc *WheelController) getCurrOpts() []WheelItemI {
 	return wc.Current.Items
 }
 
-const ACTIVATING_CHAR = 'q'
-
 func (wc *WheelController) ReactOnKey(ev hook.Event) error {
 	kchar := ev.Keychar
 	if isBackspace(kchar) {
@@ -37,7 +35,7 @@ func (wc *WheelController) ReactOnKey(ev hook.Event) error {
 	}
 
 	if wc.Current == nil {
-		if kchar == ACTIVATING_CHAR {
+		if kchar == getActivatingChar() {
 			removePreviousCharacters(1)
 			wc.Current = wc.Start.Response()
 		}
@@ -45,7 +43,7 @@ func (wc *WheelController) ReactOnKey(ev hook.Event) error {
 	}
 
 	i := deductIndFrom(kchar)
-	removePreviousCharacters(wc.Current.FrameSize)
+	removePreviousCharacters(wc.Current.FrameSize+1)
 	opts := wc.getCurrOpts()
 	if isOutOfBounds(i, opts) {
 		wc.Current = nil
@@ -57,14 +55,14 @@ func (wc *WheelController) ReactOnKey(ev hook.Event) error {
 }
 
 func removePreviousCharacters(n int) {
-	for i := 0; i < n+1; i++ {
+	for i := 0; i < n; i++ {
 		robotgo.KeyPress(robotgo.Left, robotgo.Shift)
 	}
 	robotgo.KeyPress(robotgo.Backspace)
 }
 
 func (wc *WheelController) addItem(nextI int, it WheelItemI) {
-	if nextI >= 5-1 {
+	if nextI >= getFrameCap() - 1 {
 		var oldKey rune
 		it, oldKey = reassignAndSwapKeys(it, makeKey(0))
 		slider := makeWheelFrame(oldKey, ">>")
@@ -122,9 +120,8 @@ func (wco WheelChatOption) Response() *WheelFrame {
 	return nil
 }
 
-const MAX_INTRO_LEN = 10
-
 func makeWheelChatOption(key rune, prompt string, phrase string) WheelChatOption {
+  MAX_INTRO_LEN := getIntroLen()
 	if len(prompt) > MAX_INTRO_LEN {
 		prompt = prompt[:MAX_INTRO_LEN-2] + ".."
 	}

@@ -9,15 +9,19 @@ import (
 
 type PhraseSet [][2]any // string | PhraseSet
 
-func loadPhraseSet(path string) (PhraseSet, error) {
+func loadFileInto[T any](path string) (T, error) {
 	f, err := os.ReadFile(path)
 	if err != nil {
-		return nil, err
+		return *new(T), err
 	}
 
-	phs := PhraseSet{}
+	phs := new(T)
 	err = json.Unmarshal(f, &phs)
-	return phs, err
+	return *phs, err
+}
+
+func loadPhraseSet(path string) (PhraseSet, error) {
+  return loadFileInto[PhraseSet](path)
 }
 
 func parseWheel(ps PhraseSet) ChatWheelI {

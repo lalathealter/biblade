@@ -6,6 +6,13 @@ func isOutOfBounds[T any](i int, arr []T) bool {
 	return i < 0 || i >= len(arr)
 }
 
+func clampPositive(v int, lower int) int {
+  if v < lower {
+    v = lower
+  }
+  return v
+}
+
 func isBackspace(char rune) bool {
 	return rune(8) == char
 }
